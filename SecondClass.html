@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hello World</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #6b93b8;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  #scene {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<script>
+  const TEXT = 'Hello World';
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+
+  const textLayer = document.createElement('canvas');
+  const tctx = textLayer.getContext('2d');
+
+  let W, H;
+  const clouds = [];
+  const drops = [];
+  const DROP_COUNT = 400;
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function resize() {
+    W = canvas.width = textLayer.width = window.innerWidth;
+    H = canvas.height = textLayer.height = window.innerHeight;
+    initClouds();
+    initDrops();
+  }
+
+  function initClouds() {
+    clouds.length = 0;
+    for (let i = 0; i < 6; i++) {
+      clouds.push({
+        x: Math.random() * W,
+        y: rand(0, H * 0.4),
+        scale: rand(0.6, 1.6),
+        speed: rand(0.2, 0.7),
+        opacity: rand(0.5, 0.9)
+      });
+    }
+  }
+
+  function initDrops() {
+    drops.length = 0;
+    for (let i = 0; i < DROP_COUNT; i++) {
+      drops.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        len: rand(8, 18),
+        speed: rand(6, 14),
+        opacity: rand(0.3, 0.9)
+      });
+    }
+  }
+
+  function drawCloud(c, x, y, s) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.globalAlpha = c.opacity;
+    ctx.fillStyle = '#e8f0f8';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 80, 45, 0, 0, Math.PI * 2);
+    ctx.ellipse(60, 10, 60, 35, 0, 0, Math.PI * 2);
+    ctx.ellipse(-60, 12, 55, 32, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -25, 55, 35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function fitFont() {
+    let size = Math.min(W * 0.18, H * 0.45);
+    tctx.font = `900 ${size}px Arial, Helvetica, sans-serif`;
+    while (tctx.measureText(TEXT).width > W * 0.92 && size > 10) {
+      size *= 0.95;
+      tctx.font = `900 ${size}px Arial, Helvetica, sans-serif`;
+    }
+    return size;
+  }
+
+  function drawRain(g) {
+    g.lineCap = 'round';
+    g.lineWidth = 2;
+    for (const d of drops) {
+      g.globalAlpha = d.opacity;
+      g.strokeStyle = '#8fb8e8';
+      g.beginPath();
+      g.moveTo(d.x, d.y);
+      g.lineTo(d.x, d.y + d.len);
+      g.stroke();
+
+      d.y += d.speed;
+      if (d.y > H) {
+        d.y = -d.len;
+        d.x = Math.random() * W;
+      }
+    }
+    g.globalAlpha = 1;
+  }
+
+  function drawTextMask() {
+    tctx.clearRect(0, 0, W, H);
+    tctx.fillStyle = '#ffffff';
+    tctx.textAlign = 'center';
+    tctx.textBaseline = 'middle';
+    const size = fitFont();
+    tctx.font = `900 ${size}px Arial, Helvetica, sans-serif`;
+    tctx.fillText(TEXT, W / 2, H / 2);
+  }
+
+  function drawGlow(size) {
+    ctx.save();
+    ctx.font = `900 ${size}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(30, 50, 80, 0.8)';
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = '#dbe9f5';
+    ctx.fillText(TEXT, W / 2, H / 2);
+    ctx.restore();
+  }
+
+  function loop() {
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#a7c4de');
+    sky.addColorStop(1, '#dce8f2');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const c of clouds) {
+      drawCloud(c, c.x, c.y, c.scale);
+      c.x += c.speed;
+      if (c.x - 300 > W) c.x = -300;
+    }
+
+    drawTextMask();
+    tctx.save();
+    tctx.globalCompositeOperation = 'source-in';
+    drawRain(tctx);
+    tctx.restore();
+
+    const size = fitFont();
+    drawGlow(size);
+    ctx.drawImage(textLayer, 0, 0);
+
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  loop();
+</script>
+</body>
+</html>
